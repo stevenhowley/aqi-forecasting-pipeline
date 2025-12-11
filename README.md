@@ -1,5 +1,16 @@
 # Automated Air Quality Forecasting Pipeline (Oregon AQI)
 
+<details>
+  <summary><strong>Project Badges</strong> (click to expand)</summary>
+
+  
+  ![Python](https://img.shields.io/badge/Python-3.11-blue)
+  ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+  ![Status](https://img.shields.io/badge/Status-In_Development-orange)
+  ![PRs Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen)
+
+</details>
+
 This project implements an **automated end-to-end pipeline** for collecting air quality data in Oregon, storing it in PostgreSQL, transforming it into daily aggregates, generating forecasts using a baseline AQI model, and logging alerts when poor air quality is expected.
 
 It is designed as a real-world MLOps-style workflow: modular, scheduled, reproducible, and easy to extend with more sophisticated models later.
