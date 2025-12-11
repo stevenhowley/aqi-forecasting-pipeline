@@ -21,3 +21,6 @@ Thumbs.db
 # Models (optional)
 # Uncomment if you don't want to commit trained models
 # models/
+
+models/*.joblib
+
