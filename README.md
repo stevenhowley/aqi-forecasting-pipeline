@@ -1,486 +1,278 @@
-\# Automated Air Quality Forecasting Pipeline (Oregon AQI)
+# Automated Air Quality Forecasting Pipeline (Oregon AQI)
 
+<details>
+  <summary><strong>Project Badges</strong> (click to expand)</summary>
 
+  ![Python](https://img.shields.io/badge/Python-3.11-blue)
+  ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+  ![Status](https://img.shields.io/badge/Status-In_Development-orange)
+  ![PRs Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen)
+</details>
 
-This project implements an \*\*automated end-to-end pipeline\*\* for collecting air quality data in Oregon, storing it in PostgreSQL, transforming it into daily aggregates, generating forecasts using a baseline AQI model, and logging alerts when poor air quality is expected.
-
-
+This project implements an **automated end-to-end pipeline** for collecting air quality data in Oregon, storing it in PostgreSQL, transforming it into daily aggregates, generating forecasts using a baseline AQI model, and logging alerts when poor air quality is expected.
 
 It is designed as a real-world MLOps-style workflow: modular, scheduled, reproducible, and easy to extend with more sophisticated models later.
 
-
-
 ---
 
-
-
-\## Overview
-
-
+## Overview
 
 The pipeline performs the following tasks:
 
+### 1. Ingestion
+- Pulls real-time AQI observations from the **AirNow API**
+- Stores raw hourly measurements in a PostgreSQL database (`observations` table)
 
+### 2. Daily Aggregation
+- Converts raw observations into daily metrics per location:
+  - `max_aqi`
+  - `mean_aqi`
+  - `min_aqi`
 
-\### 1. Ingestion
+### 3. Forecasting
+- Uses a saved baseline model (`persistence` strategy)
+- Predicts *next-day AQI* for each Oregon location
+- Writes results into the `forecasts` table
 
-\- Pulls real-time AQI observations from the \*\*AirNow API\*\*
+### 4. Alerting + Logging
+- Checks if forecasted AQI exceeds a threshold (default: **100**)
+- Writes alerts to `logs/alerts.log`
+- Prints alerts to the console when forecasting runs
 
-\- Stores raw hourly measurements in a PostgreSQL database (`observations` table)
-
-
-
-\### 2. Daily Aggregation
-
-\- Converts raw observations into daily metrics per location:
-
-&nbsp; - `max\_aqi`
-
-&nbsp; - `mean\_aqi`
-
-&nbsp; - `min\_aqi`
-
-
-
-\### 3. Forecasting
-
-\- Uses a saved baseline model (`persistence` strategy)
-
-\- Predicts \*next-day AQI\* for each Oregon location
-
-\- Writes results into the `forecasts` table
-
-
-
-\### 4. Alerting + Logging
-
-\- Checks if forecasted AQI exceeds a threshold (default: \*\*100\*\*)
-
-\- Writes alerts to `logs/alerts.log`
-
-\- Prints alerts to the console when forecasting runs
-
-
-
-\### 5. Extensible Design
-
+### 5. Extensible Design
 The project intentionally uses a modular folder structure so more advanced ML models, dashboards, and API layers can be added later.
 
+---
 
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    subgraph Ingestion
+        A[AirNow API] --> B[ingest_airnow.py]
+        B --> C[(observations)]
+    end
+
+    subgraph Features
+        C --> D[build_features.py]
+        D --> E[(daily_aggregates)]
+    end
+
+    subgraph Modeling
+        E --> F[train_model.py]
+        F --> G[[aqi_baseline_model.joblib]]
+    end
+
+    subgraph Forecasting
+        E --> H[forecast_and_notify.py]
+        G --> H
+        H --> I[(forecasts)]
+        H --> J[alerts.log]
+    end
+```
 
 ---
 
+## Project Structure
 
-
-\## Project Structure
-
-
-
-```
-
+```text
 aqi-forecasting-pipeline/
-
-├── .venv/                     # Virtual environment
-
+├── .venv/
 ├── data/
-
 │   ├── raw/
-
 │   ├── processed/
-
 ├── logs/
-
 │   └── alerts.log
-
 ├── models/
-
-│   └── aqi\_baseline\_model.joblib
-
+│   └── aqi_baseline_model.joblib
 ├── sql/
-
 │   ├── schema.sql
-
-│   └── seed\_locations.sql
-
+│   └── seed_locations.sql
 ├── src/
-
 │   ├── config/
-
 │   │   └── settings.py
-
 │   ├── db/
-
 │   │   ├── connection.py
-
-│   │   ├── init\_db.py
-
-│   │   └── seed\_locations.py
-
+│   │   ├── init_db.py
+│   │   └── seed_locations.py
 │   ├── ingest/
-
-│   │   ├── airnow\_client.py
-
-│   │   └── ingest\_airnow.py
-
+│   │   ├── airnow_client.py
+│   │   └── ingest_airnow.py
 │   ├── features/
-
-│   │   └── build\_features.py
-
+│   │   └── build_features.py
 │   ├── models/
-
-│   │   ├── baseline\_model.py
-
-│   │   └── train\_model.py
-
-│   └── forecast\_and\_notify.py
-
+│   │   ├── baseline_model.py
+│   │   └── train_model.py
+│   └── forecast_and_notify.py
 ├── .env
-
 ├── requirements.txt
-
 └── README.md
-
 ```
-
-
 
 ---
 
+## Database Schema
 
+**Database:** `aqi_db`  
+**Port:** `5433`
 
-\## Database Schema
-
-
-
-\*\*Database:\*\* `aqi\_db`  
-
-\*\*Port:\*\* `5433`
-
-
-
-\### `locations`
-
+### `locations`
 | column   | type               |
-
 |----------|--------------------|
-
 | id       | SERIAL PRIMARY KEY |
-
 | name     | TEXT               |
-
 | latitude | DOUBLE PRECISION   |
-
 | longitude| DOUBLE PRECISION   |
 
-
-
-\### `observations`
-
+### `observations`
 Raw AirNow observations including pollutant, AQI, timestamp, and JSON metadata.
 
-
-
-\### `daily\_aggregates`
-
+### `daily_aggregates`
 Daily summary statistics computed from observations.
 
-
-
-\### `forecasts`
-
+### `forecasts`
 Stored predictions for next-day AQI per location and model.
-
-
 
 ---
 
-
-
-\## Environment Variables
-
-
+## Environment Variables
 
 Create a `.env` file in the project root:
 
+```env
+AIRNOW_API_KEY=REPLACE_ME
 
-
+DB_USER=postgres
+DB_PASSWORD=REPLACE_ME
+DB_HOST=localhost
+DB_PORT=5433
+DB_NAME=aqi_db
 ```
 
-AIRNOW\_API\_KEY=REPLACE\_ME
-
-
-
-DB\_USER=postgres
-
-DB\_PASSWORD=REPLACE\_ME
-
-DB\_HOST=localhost
-
-DB\_PORT=5433
-
-DB\_NAME=aqi\_db
-
-```
-
-
-
-Do \*\*NOT\*\* commit `.env` to Git.
-
-
+Do **NOT** commit `.env` to Git.
 
 ---
 
-
-
-\## Running the Pipeline
-
-
+## Running the Pipeline
 
 Activate your virtual environment (example on Windows):
 
-
-
+```bat
+cd path\to\aqi-forecasting-pipeline
+.venv\Scripts\activate.bat
 ```
 
-cd path\\to\\aqi-forecasting-pipeline
+### 1. Initialize the database schema
 
-.venv\\Scripts\\activate.bat
-
+```bat
+python -m src.db.init_db
 ```
 
+### 2. Seed Oregon locations
 
-
-\### 1. Initialize the database schema
-
-
-
+```bat
+python -m src.db.seed_locations
 ```
 
-python -m src.db.init\_db
+### 3. Ingest live AirNow data
 
+```bat
+python -m src.ingest.ingest_airnow
 ```
 
+### 4. Build daily aggregates
 
-
-\### 2. Seed Oregon locations
-
-
-
+```bat
+python -m src.features.build_features
 ```
 
-python -m src.db.seed\_locations
+### 5. Train the baseline model
 
+```bat
+python -m src.models.train_model
 ```
 
+### 6. Run forecasting + alerts
 
-
-\### 3. Ingest live AirNow data
-
-
-
+```bat
+python -m src.forecast_and_notify
 ```
-
-python -m src.ingest.ingest\_airnow
-
-```
-
-
-
-\### 4. Build daily aggregates
-
-
-
-```
-
-python -m src.features.build\_features
-
-```
-
-
-
-\### 5. Train the baseline model
-
-
-
-```
-
-python -m src.models.train\_model
-
-```
-
-
-
-\### 6. Run forecasting + alerts
-
-
-
-```
-
-python -m src.forecast\_and\_notify
-
-```
-
-
 
 Alerts are written to:
 
-
-
 ```
-
 logs/alerts.log
-
 ```
-
-
 
 ---
 
+## Baseline Model
 
-
-\## Baseline Model
-
-
-
-The baseline model uses a simple \*\*persistence strategy\*\*:
-
-
+The baseline model uses a simple **persistence strategy**:
 
 ```
-
-forecast\_aqi(t+1) = observed\_max\_aqi(t)
-
+forecast_aqi(t+1) = observed_max_aqi(t)
 ```
 
-
-
-This provides a reference benchmark before upgrading to more advanced ML models.
-
-
+This provides a baseline benchmark before upgrading to more advanced ML models.
 
 ---
 
-
-
-\## Alerting System
-
-
+## Alerting System
 
 Alerts trigger when:
 
-
-
 ```
-
-forecast\_aqi >= 100
-
+forecast_aqi >= 100
 ```
-
-
 
 Example:
 
-
-
+```
+[2025-12-10T23:15:42 UTC] ALERT: location_id=5, target_date=2025-12-11, forecast_aqi=135
 ```
 
-\[2025-12-10T23:15:42 UTC] ALERT: location\_id=5, target\_date=2025-12-11, forecast\_aqi=135
+---
 
-```
+## Scheduling (Future Work)
 
+This pipeline can be fully automated using **Windows Task Scheduler**:
 
+- 3:00 PM → ingestion  
+- 3:02 PM → daily aggregation  
+- 3:03 PM → forecasting + alerts  
+
+Instructions will be added later.
 
 ---
 
+## Future Enhancements
 
-
-\## Scheduling (Future Work)
-
-
-
-This pipeline can be fully automated using \*\*Windows Task Scheduler\*\*:
-
-
-
-\- 3:00 PM → ingestion  
-
-\- 3:02 PM → daily aggregation  
-
-\- 3:03 PM → forecasting + alerts  
-
-
-
-Instructions will be added in a future update.
-
-
+- Add lag-based and rolling-window features  
+- Train regression, tree-based, or time-series models  
+- Add FastAPI endpoint to serve forecasts  
+- Build a dashboard  
+- Containerize with Docker  
+- Multi-day forecasting  
+- Deploy to cloud platforms  
 
 ---
 
+## Current Status
 
-
-\## Future Enhancements
-
-
-
-\- Add lag-based and rolling-window features  
-
-\- Train regression, random forest, gradient boosting, or time-series models  
-
-\- Add FastAPI endpoint to serve forecasts  
-
-\- Build a dashboard for observations + forecasts  
-
-\- Containerize with Docker  
-
-\- Multi-day forecasting  
-
-\- Deploy to cloud platforms  
-
-
+- ✔️ AirNow ingestion  
+- ✔️ Observation storage  
+- ✔️ Daily feature creation  
+- ✔️ Baseline model training  
+- ✔️ Forecast generation  
+- ✔️ Alert logging  
+- ✔️ Modular, extensible architecture  
 
 ---
 
-
-
-\## Current Status
-
-
-
-The pipeline currently supports:
-
-
-
-\- ✔️ AirNow ingestion  
-
-\- ✔️ Observation storage  
-
-\- ✔️ Daily feature creation  
-
-\- ✔️ Baseline model training  
-
-\- ✔️ Forecast generation  
-
-\- ✔️ Alert logging  
-
-\- ✔️ Modular, extensible architecture  
-
-
-
----
-
-
-
-\## Notes
-
-
+## Notes
 
 This project is part of a professional data engineering + ML portfolio.  
-
-It will continue evolving toward a full MLOps deployment with automation, advanced modeling, and API support.
-
-
+It will continue evolving toward full MLOps deployment with automation, advanced modeling, and API support.
 
 Feel free to explore, run individual steps, or extend the system!
-
-
-
