@@ -3,10 +3,12 @@ numpy
 sqlalchemy
 psycopg2-binary
 python-dotenv
+
 fastapi
-uvicorn
-scikit-learn
-requests
-joblib
+uvicorn[standard]
 httpx
+
+scikit-learn
+joblib
+
 pytest

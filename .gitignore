@@ -1,9 +1,8 @@
-# Python
+# Python bytecode / cache
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*.pkl
 
 # Virtual environment
 .venv/
@@ -14,13 +13,14 @@ __pycache__/
 # Logs
 logs/
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# Models (optional)
-# Uncomment if you don't want to commit trained models
-# models/
-
+# Models (generated artifacts)
 models/*.joblib
 
+# Jupyter notebook checkpoints (if you add notebooks later)
+.ipynb_checkpoints/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
