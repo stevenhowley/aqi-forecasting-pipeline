@@ -244,9 +244,3 @@ GitHub Actions workflow runs pytest on every push.
 - Automated scheduling via Task Scheduler ✔
 - Master pipeline script ✔
 
----
-
-## Notes
-
-This project is part of a professional data engineering + ML portfolio.
-
