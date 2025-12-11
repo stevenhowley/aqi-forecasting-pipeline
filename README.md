@@ -80,61 +80,61 @@ The project intentionally uses a modular folder structure so more advanced ML mo
 
 aqi-forecasting-pipeline/
 
-├── .venv/                     # Python virtual environment (excluded from Git)
+├── .venv/                     # Virtual environment
 
 ├── data/
 
-│   ├── raw/                   # Future raw data dumps (optional)
+│   ├── raw/
 
-│   ├── processed/             # Future cleaned data (optional)
+│   ├── processed/
 
 ├── logs/
 
-│   └── alerts.log             # Alert history (auto-created)
+│   └── alerts.log
 
 ├── models/
 
-│   └── aqi\_baseline\_model.joblib   # Saved forecasting model
+│   └── aqi\_baseline\_model.joblib
 
 ├── sql/
 
-│   ├── schema.sql             # Database schema
+│   ├── schema.sql
 
-│   └── seed\_locations.sql     # Oregon location seeds
+│   └── seed\_locations.sql
 
 ├── src/
 
 │   ├── config/
 
-│   │   └── settings.py        # Environment variable loading
+│   │   └── settings.py
 
 │   ├── db/
 
-│   │   ├── connection.py      # SQLAlchemy engine + DB config
+│   │   ├── connection.py
 
-│   │   ├── init\_db.py         # Create tables
+│   │   ├── init\_db.py
 
-│   │   └── seed\_locations.py  # Insert initial locations
+│   │   └── seed\_locations.py
 
 │   ├── ingest/
 
-│   │   ├── airnow\_client.py   # AirNow API client
+│   │   ├── airnow\_client.py
 
-│   │   └── ingest\_airnow.py   # Orchestrates ingestion → DB
+│   │   └── ingest\_airnow.py
 
 │   ├── features/
 
-│   │   └── build\_features.py  # Daily aggregation into daily\_aggregates
+│   │   └── build\_features.py
 
 │   ├── models/
 
-│   │   ├── baseline\_model.py  # Persistence baseline model
+│   │   ├── baseline\_model.py
 
-│   │   └── train\_model.py     # Trains + saves baseline model
+│   │   └── train\_model.py
 
-│   └── forecast\_and\_notify.py # Forecasts + logs alerts
+│   └── forecast\_and\_notify.py
 
-├── .env                       # Environment variables (NOT tracked by git)
+├── .env
 
 ├── requirements.txt
 
@@ -160,35 +160,35 @@ aqi-forecasting-pipeline/
 
 \### `locations`
 
-| column     | type               |
+| column   | type               |
 
-|------------|--------------------|
+|----------|--------------------|
 
-| id         | SERIAL PRIMARY KEY |
+| id       | SERIAL PRIMARY KEY |
 
-| name       | TEXT               |
+| name     | TEXT               |
 
-| latitude   | DOUBLE PRECISION   |
+| latitude | DOUBLE PRECISION   |
 
-| longitude  | DOUBLE PRECISION   |
+| longitude| DOUBLE PRECISION   |
 
 
 
 \### `observations`
 
-Stores raw AirNow observations including pollutant, AQI, timestamp, and JSON metadata.
+Raw AirNow observations including pollutant, AQI, timestamp, and JSON metadata.
 
 
 
 \### `daily\_aggregates`
 
-Daily summary statistics computed from `observations`.
+Daily summary statistics computed from observations.
 
 
 
 \### `forecasts`
 
-Predicted next-day AQI per location, per model.
+Stored predictions for next-day AQI per location and model.
 
 
 
@@ -236,13 +236,13 @@ Do \*\*NOT\*\* commit `.env` to Git.
 
 
 
-Run all commands from Command Prompt with your venv activated:
+Activate your virtual environment (example on Windows):
 
 
 
-```bat
+```
 
-cd C:\\Users\\steve\\Documents\\aqi-forecasting-pipeline
+cd path\\to\\aqi-forecasting-pipeline
 
 .venv\\Scripts\\activate.bat
 
@@ -250,15 +250,11 @@ cd C:\\Users\\steve\\Documents\\aqi-forecasting-pipeline
 
 
 
----
+\### 1. Initialize the database schema
 
 
 
-\### 1️⃣ Initialize the database schema
-
-
-
-```bat
+```
 
 python -m src.db.init\_db
 
@@ -266,11 +262,11 @@ python -m src.db.init\_db
 
 
 
-\### 2️⃣ Seed Oregon locations
+\### 2. Seed Oregon locations
 
 
 
-```bat
+```
 
 python -m src.db.seed\_locations
 
@@ -278,11 +274,11 @@ python -m src.db.seed\_locations
 
 
 
-\### 3️⃣ Ingest live AirNow data
+\### 3. Ingest live AirNow data
 
 
 
-```bat
+```
 
 python -m src.ingest.ingest\_airnow
 
@@ -290,11 +286,11 @@ python -m src.ingest.ingest\_airnow
 
 
 
-\### 4️⃣ Build daily aggregates
+\### 4. Build daily aggregates
 
 
 
-```bat
+```
 
 python -m src.features.build\_features
 
@@ -302,11 +298,11 @@ python -m src.features.build\_features
 
 
 
-\### 5️⃣ Train the baseline model
+\### 5. Train the baseline model
 
 
 
-```bat
+```
 
 python -m src.models.train\_model
 
@@ -314,11 +310,11 @@ python -m src.models.train\_model
 
 
 
-\### 6️⃣ Run forecasting + alerts
+\### 6. Run forecasting + alerts
 
 
 
-```bat
+```
 
 python -m src.forecast\_and\_notify
 
@@ -358,7 +354,7 @@ forecast\_aqi(t+1) = observed\_max\_aqi(t)
 
 
 
-This provides a reference point for determining whether future ML models outperform a trivial predictor.
+This provides a reference benchmark before upgrading to more advanced ML models.
 
 
 
@@ -370,7 +366,7 @@ This provides a reference point for determining whether future ML models outperf
 
 
 
-Alerts occur when:
+Alerts trigger when:
 
 
 
@@ -382,7 +378,7 @@ forecast\_aqi >= 100
 
 
 
-Alert examples written to `logs/alerts.log`:
+Example:
 
 
 
@@ -402,15 +398,15 @@ Alert examples written to `logs/alerts.log`:
 
 
 
-This pipeline can be fully automated via \*\*Windows Task Scheduler\*\*:
+This pipeline can be fully automated using \*\*Windows Task Scheduler\*\*:
 
 
 
-\- \*\*3:00 PM daily\*\* → ingestion  
+\- 3:00 PM → ingestion  
 
-\- \*\*3:02 PM\*\* → aggregation  
+\- 3:02 PM → daily aggregation  
 
-\- \*\*3:03 PM\*\* → forecasting + alerts  
+\- 3:03 PM → forecasting + alerts  
 
 
 
@@ -426,19 +422,19 @@ Instructions will be added in a future update.
 
 
 
-\- Add lag features and ML regression models
+\- Add lag-based and rolling-window features  
 
-\- Train tree-based or time-series models (RF, XGBoost, Prophet, ARIMA)
+\- Train regression, random forest, gradient boosting, or time-series models  
 
-\- Serve forecasts via a FastAPI endpoint
+\- Add FastAPI endpoint to serve forecasts  
 
-\- Build a dashboard to visualize predictions + trends
+\- Build a dashboard for observations + forecasts  
 
-\- Containerize with Docker
+\- Containerize with Docker  
 
-\- Multi-day forecasting
+\- Multi-day forecasting  
 
-\- Deploy to cloud platforms
+\- Deploy to cloud platforms  
 
 
 
@@ -450,7 +446,7 @@ Instructions will be added in a future update.
 
 
 
-This pipeline now supports:
+The pipeline currently supports:
 
 
 
@@ -458,13 +454,13 @@ This pipeline now supports:
 
 \- ✔️ Observation storage  
 
-\- ✔️ Daily feature generation  
+\- ✔️ Daily feature creation  
 
 \- ✔️ Baseline model training  
 
 \- ✔️ Forecast generation  
 
-\- ✔️ Logging + alerting  
+\- ✔️ Alert logging  
 
 \- ✔️ Modular, extensible architecture  
 
@@ -480,11 +476,11 @@ This pipeline now supports:
 
 This project is part of a professional data engineering + ML portfolio.  
 
-It is actively evolving toward a full MLOps pipeline with scheduling, advanced modeling, and cloud deployment.
+It will continue evolving toward a full MLOps deployment with automation, advanced modeling, and API support.
 
 
 
-Feel free to explore, run individual steps, or extend the system.
+Feel free to explore, run individual steps, or extend the system!
 
 
 
