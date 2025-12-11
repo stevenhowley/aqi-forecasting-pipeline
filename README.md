@@ -35,6 +35,35 @@ The project intentionally uses a modular folder structure so more advanced ML mo
 
 ---
 
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    subgraph Ingestion
+        A[AirNow API] --> B[ingest_airnow.py]
+        B --> C[(observations)]
+    end
+
+    subgraph Features
+        C --> D[build_features.py]
+        D --> E[(daily_aggregates)]
+    end
+
+    subgraph Modeling
+        E --> F[train_model.py]
+        F --> G[[aqi_baseline_model.joblib]]
+    end
+
+    subgraph Forecasting
+        E --> H[forecast_and_notify.py]
+        G --> H
+        H --> I[(forecasts)]
+        H --> J[alerts.log]
+    end
+```
+
+---
+
 ## Project Structure
 
 ```
