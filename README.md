@@ -1,8 +1,8 @@
-\# Automated Air Quality Forecasting Pipeline (Oregon AQI)
+# Automated Air Quality Forecasting Pipeline (Oregon AQI)
 
 
 
-This project implements an \*\*automated end-to-end pipeline\*\* for collecting air quality data in Oregon, storing it in PostgreSQL, transforming it into daily aggregates, generating forecasts using a baseline AQI model, and logging alerts when poor air quality is expected.
+This project implements an **automated end-to-end pipeline** for collecting air quality data in Oregon, storing it in PostgreSQL, transforming it into daily aggregates, generating forecasts using a baseline AQI model, and logging alerts when poor air quality is expected.
 
 
 
@@ -14,7 +14,7 @@ It is designed as a real-world MLOps-style workflow: modular, scheduled, reprodu
 
 
 
-\## Overview
+## Overview
 
 
 
@@ -22,17 +22,17 @@ The pipeline performs the following tasks:
 
 
 
-\### 1. Ingestion
+### 1. Ingestion
 
-\- Pulls real-time AQI observations from the \*\*AirNow API\*\*
+- Pulls real-time AQI observations from the **AirNow API**
 
-\- Stores raw hourly measurements in a PostgreSQL database (`observations` table)
+- Stores raw hourly measurements in a PostgreSQL database (`observations` table)
 
 
 
-\### 2. Daily Aggregation
+### 2. Daily Aggregation
 
-\- Converts raw observations into daily metrics per location:
+- Converts raw observations into daily metrics per location:
 
 &nbsp; - `max\_aqi`
 
@@ -42,27 +42,27 @@ The pipeline performs the following tasks:
 
 
 
-\### 3. Forecasting
+### 3. Forecasting
 
-\- Uses a saved baseline model (`persistence` strategy)
+- Uses a saved baseline model (`persistence` strategy)
 
-\- Predicts \*next-day AQI\* for each Oregon location
+- Predicts *next-day AQI* for each Oregon location
 
-\- Writes results into the `forecasts` table
-
-
-
-\### 4. Alerting + Logging
-
-\- Checks if forecasted AQI exceeds a threshold (default: \*\*100\*\*)
-
-\- Writes alerts to `logs/alerts.log`
-
-\- Prints alerts to the console when forecasting runs
+- Writes results into the `forecasts` table
 
 
 
-\### 5. Extensible Design
+### 4. Alerting + Logging
+
+- Checks if forecasted AQI exceeds a threshold (default: **100**)
+
+- Writes alerts to `logs/alerts.log`
+
+- Prints alerts to the console when forecasting runs
+
+
+
+### 5. Extensible Design
 
 The project intentionally uses a modular folder structure so more advanced ML models, dashboards, and API layers can be added later.
 
@@ -72,7 +72,7 @@ The project intentionally uses a modular folder structure so more advanced ML mo
 
 
 
-\## Project Structure
+## Project Structure
 
 
 
@@ -148,17 +148,17 @@ aqi-forecasting-pipeline/
 
 
 
-\## Database Schema
+## Database Schema
 
 
 
-\*\*Database:\*\* `aqi\_db`  
+**Database:** `aqi\_db`  
 
-\*\*Port:\*\* `5433`
+**Port:** `5433`
 
 
 
-\### `locations`
+### `locations`
 
 | column     | type               |
 
@@ -174,19 +174,19 @@ aqi-forecasting-pipeline/
 
 
 
-\### `observations`
+### `observations`
 
 Stores raw AirNow observations including pollutant, AQI, timestamp, and JSON metadata.
 
 
 
-\### `daily\_aggregates`
+### `daily\_aggregates`
 
 Daily summary statistics computed from `observations`.
 
 
 
-\### `forecasts`
+### `forecasts`
 
 Predicted next-day AQI per location, per model.
 
@@ -196,7 +196,7 @@ Predicted next-day AQI per location, per model.
 
 
 
-\## Environment Variables
+## Environment Variables
 
 
 
@@ -224,7 +224,7 @@ DB\_NAME=aqi\_db
 
 
 
-Do \*\*NOT\*\* commit `.env` to Git.
+Do **NOT** commit `.env` to Git.
 
 
 
@@ -232,7 +232,7 @@ Do \*\*NOT\*\* commit `.env` to Git.
 
 
 
-\## Running the Pipeline
+## Running the Pipeline
 
 
 
@@ -254,7 +254,7 @@ cd C:\\Users\\steve\\Documents\\aqi-forecasting-pipeline
 
 
 
-\### 1️⃣ Initialize the database schema
+### 1️⃣ Initialize the database schema
 
 
 
@@ -266,7 +266,7 @@ python -m src.db.init\_db
 
 
 
-\### 2️⃣ Seed Oregon locations
+### 2️⃣ Seed Oregon locations
 
 
 
@@ -278,7 +278,7 @@ python -m src.db.seed\_locations
 
 
 
-\### 3️⃣ Ingest live AirNow data
+### 3️⃣ Ingest live AirNow data
 
 
 
@@ -290,7 +290,7 @@ python -m src.ingest.ingest\_airnow
 
 
 
-\### 4️⃣ Build daily aggregates
+### 4️⃣ Build daily aggregates
 
 
 
@@ -302,7 +302,7 @@ python -m src.features.build\_features
 
 
 
-\### 5️⃣ Train the baseline model
+### 5️⃣ Train the baseline model
 
 
 
@@ -314,7 +314,7 @@ python -m src.models.train\_model
 
 
 
-\### 6️⃣ Run forecasting + alerts
+### 6️⃣ Run forecasting + alerts
 
 
 
@@ -342,11 +342,11 @@ logs/alerts.log
 
 
 
-\## Baseline Model
+## Baseline Model
 
 
 
-The baseline model uses a simple \*\*persistence strategy\*\*:
+The baseline model uses a simple **persistence strategy**:
 
 
 
@@ -366,7 +366,7 @@ This provides a reference point for determining whether future ML models outperf
 
 
 
-\## Alerting System
+## Alerting System
 
 
 
@@ -398,19 +398,19 @@ Alert examples written to `logs/alerts.log`:
 
 
 
-\## Scheduling (Future Work)
+## Scheduling (Future Work)
 
 
 
-This pipeline can be fully automated via \*\*Windows Task Scheduler\*\*:
+This pipeline can be fully automated via **Windows Task Scheduler**:
 
 
 
-\- \*\*3:00 PM daily\*\* → ingestion  
+- **3:00 PM daily** → ingestion  
 
-\- \*\*3:02 PM\*\* → aggregation  
+- **3:02 PM** → aggregation  
 
-\- \*\*3:03 PM\*\* → forecasting + alerts  
+- **3:03 PM** → forecasting + alerts  
 
 
 
@@ -422,23 +422,23 @@ Instructions will be added in a future update.
 
 
 
-\## Future Enhancements
+## Future Enhancements
 
 
 
-\- Add lag features and ML regression models
+- Add lag features and ML regression models
 
-\- Train tree-based or time-series models (RF, XGBoost, Prophet, ARIMA)
+- Train tree-based or time-series models (RF, XGBoost, Prophet, ARIMA)
 
-\- Serve forecasts via a FastAPI endpoint
+- Serve forecasts via a FastAPI endpoint
 
-\- Build a dashboard to visualize predictions + trends
+- Build a dashboard to visualize predictions + trends
 
-\- Containerize with Docker
+- Containerize with Docker
 
-\- Multi-day forecasting
+- Multi-day forecasting
 
-\- Deploy to cloud platforms
+- Deploy to cloud platforms
 
 
 
@@ -446,7 +446,7 @@ Instructions will be added in a future update.
 
 
 
-\## Current Status
+## Current Status
 
 
 
@@ -454,19 +454,19 @@ This pipeline now supports:
 
 
 
-\- ✔️ AirNow ingestion  
+- ✔️ AirNow ingestion  
 
-\- ✔️ Observation storage  
+- ✔️ Observation storage  
 
-\- ✔️ Daily feature generation  
+- ✔️ Daily feature generation  
 
-\- ✔️ Baseline model training  
+- ✔️ Baseline model training  
 
-\- ✔️ Forecast generation  
+- ✔️ Forecast generation  
 
-\- ✔️ Logging + alerting  
+- ✔️ Logging + alerting  
 
-\- ✔️ Modular, extensible architecture  
+- ✔️ Modular, extensible architecture  
 
 
 
@@ -474,7 +474,7 @@ This pipeline now supports:
 
 
 
-\## Notes
+## Notes
 
 
 
