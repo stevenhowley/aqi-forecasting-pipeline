@@ -30,7 +30,7 @@ The pipeline performs the following tasks:
   - `min_aqi`
 
 ### 3. Forecasting
-- Uses a saved baseline model (`persistence` strategy)
+- Uses a saved baseline model (persistence strategy)
 - Predicts *next-day AQI* for each Oregon location
 - Writes results into the `forecasts` table
 
@@ -39,12 +39,27 @@ The pipeline performs the following tasks:
 - Writes alerts to `logs/alerts.log`
 - Prints alerts to the console when forecasting runs
 
-### 5. Extensible Design
-The project intentionally uses a modular folder structure so more advanced ML models, dashboards, and API layers can be added later.
+### 5. API Layer
+- Exposes a FastAPI service that:
+  - Provides a health check endpoint
+  - Returns the latest forecast per location
+  - Includes interactive docs via Swagger UI
+
+### 6. Automation & Scheduling
+- Provides Windows batch scripts for:
+  - Ingestion
+  - Aggregation
+  - Forecasting
+  - Orchestrating the entire pipeline
+- Can be scheduled via **Windows Task Scheduler** to run automatically once per day.
+
+### 7. CI & Testing
+- Uses `pytest` for basic API tests
+- Runs tests automatically in **GitHub Actions** on every push to `main`
 
 ---
 
-## Architecture Diagram
+## Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -69,18 +84,22 @@ flowchart LR
         H --> I[(forecasts)]
         H --> J[alerts.log]
     end
+
+    subgraph API
+        I --> K[FastAPI /forecasts/latest]
+    end
 ```
 
 ---
 
 ## Project Structure
 
-```text
+```
 aqi-forecasting-pipeline/
 ├── .venv/
 ├── data/
 │   ├── raw/
-│   ├── processed/
+│   └── processed/
 ├── logs/
 │   └── alerts.log
 ├── models/
@@ -102,46 +121,34 @@ aqi-forecasting-pipeline/
 │   │   └── build_features.py
 │   ├── models/
 │   │   ├── baseline_model.py
-│   │   └── train_model.py
+│   │   ├── train_model.py
+│   │   └── train_ml_model.py
+│   ├── api/
+│   │   └── main.py
 │   └── forecast_and_notify.py
+├── tests/
+│   └── test_health.py
+├── .github/
+│   └── workflows/
+│       └── python-tests.yml
 ├── .env
+├── .gitignore
+├── LICENSE
+├── ROADMAP.md
+├── run_ingest.bat
+├── run_build_features.bat
+├── run_forecast_and_notify.bat
+├── run_pipeline.bat
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Database Schema
-
-**Database:** `aqi_db`  
-**Port:** `5433`
-
-### `locations`
-| column   | type               |
-|----------|--------------------|
-| id       | SERIAL PRIMARY KEY |
-| name     | TEXT               |
-| latitude | DOUBLE PRECISION   |
-| longitude| DOUBLE PRECISION   |
-
-### `observations`
-Raw AirNow observations including pollutant, AQI, timestamp, and JSON metadata.
-
-### `daily_aggregates`
-Daily summary statistics computed from observations.
-
-### `forecasts`
-Stored predictions for next-day AQI per location and model.
-
----
-
 ## Environment Variables
 
-Create a `.env` file in the project root:
-
-```env
+```
 AIRNOW_API_KEY=REPLACE_ME
-
 DB_USER=postgres
 DB_PASSWORD=REPLACE_ME
 DB_HOST=localhost
@@ -149,56 +156,51 @@ DB_PORT=5433
 DB_NAME=aqi_db
 ```
 
-Do **NOT** commit `.env` to Git.
+Do NOT commit `.env`.
 
 ---
 
-## Running the Pipeline
+## Running the Pipeline Manually
 
-Activate your virtual environment (example on Windows):
-
-```bat
-cd path\to\aqi-forecasting-pipeline
-.venv\Scripts\activate.bat
 ```
-
-### 1. Initialize the database schema
-
-```bat
+.venv\Scripts ctivate.bat
 python -m src.db.init_db
-```
-
-### 2. Seed Oregon locations
-
-```bat
 python -m src.db.seed_locations
-```
-
-### 3. Ingest live AirNow data
-
-```bat
 python -m src.ingest.ingest_airnow
-```
-
-### 4. Build daily aggregates
-
-```bat
 python -m src.features.build_features
-```
-
-### 5. Train the baseline model
-
-```bat
 python -m src.models.train_model
-```
-
-### 6. Run forecasting + alerts
-
-```bat
 python -m src.forecast_and_notify
 ```
 
-Alerts are written to:
+---
+
+## Master Orchestration Script
+
+Run everything with:
+
+```
+run_pipeline.bat
+```
+
+---
+
+## API Usage
+
+```
+uvicorn src.api.main:app --reload
+```
+
+Endpoints:
+
+- `/health`
+- `/forecasts/latest`
+- `/docs`
+
+---
+
+## Alerting System
+
+Alerts trigger when `forecast_aqi >= 100` and are written to:
 
 ```
 logs/alerts.log
@@ -206,73 +208,45 @@ logs/alerts.log
 
 ---
 
-## Baseline Model
-
-The baseline model uses a simple **persistence strategy**:
+## Testing
 
 ```
-forecast_aqi(t+1) = observed_max_aqi(t)
-```
-
-This provides a baseline benchmark before upgrading to more advanced ML models.
-
----
-
-## Alerting System
-
-Alerts trigger when:
-
-```
-forecast_aqi >= 100
-```
-
-Example:
-
-```
-[2025-12-10T23:15:42 UTC] ALERT: location_id=5, target_date=2025-12-11, forecast_aqi=135
+pytest
 ```
 
 ---
 
-## Scheduling (Future Work)
+## Continuous Integration
 
-This pipeline can be fully automated using **Windows Task Scheduler**:
-
-- 3:00 PM → ingestion  
-- 3:02 PM → daily aggregation  
-- 3:03 PM → forecasting + alerts  
-
-Instructions will be added later.
+GitHub Actions workflow runs pytest on every push.
 
 ---
 
 ## Future Enhancements
 
-- Add lag-based and rolling-window features  
-- Train regression, tree-based, or time-series models  
-- Add FastAPI endpoint to serve forecasts  
-- Build a dashboard  
-- Containerize with Docker  
-- Multi-day forecasting  
-- Deploy to cloud platforms  
+- ML forecasting models
+- Streamlit dashboard
+- Dockerization
+- Cloud deployment
+- Multi-day forecasting
+- Additional API endpoints
 
 ---
 
 ## Current Status
 
-- ✔️ AirNow ingestion  
-- ✔️ Observation storage  
-- ✔️ Daily feature creation  
-- ✔️ Baseline model training  
-- ✔️ Forecast generation  
-- ✔️ Alert logging  
-- ✔️ Modular, extensible architecture  
+- AirNow ingestion ✔
+- Daily aggregates ✔
+- Baseline forecasting ✔
+- Alerts ✔
+- FastAPI service ✔
+- CI testing ✔
+- Automated scheduling via Task Scheduler ✔
+- Master pipeline script ✔
 
 ---
 
 ## Notes
 
-This project is part of a professional data engineering + ML portfolio.  
-It will continue evolving toward full MLOps deployment with automation, advanced modeling, and API support.
+This project is part of a professional data engineering + ML portfolio.
 
-Feel free to explore, run individual steps, or extend the system!
