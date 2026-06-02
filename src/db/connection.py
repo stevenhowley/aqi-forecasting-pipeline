@@ -4,15 +4,20 @@ from sqlalchemy.engine import Engine
 from src.config.settings import DATABASE_URL, print_settings_summary
 
 
+_engine: Engine | None = None
+
+
 def get_engine() -> Engine:
     """
-    Create and return a SQLAlchemy engine.
+    Return the shared SQLAlchemy engine, creating it once on first call.
 
-    We keep this in one place so the rest of the project can import it
-    without worrying about connection details.
+    Reusing one engine across the process lets SQLAlchemy manage a
+    connection pool rather than opening a new connection every call.
     """
-    engine = create_engine(DATABASE_URL, echo=False, future=True)
-    return engine
+    global _engine
+    if _engine is None:
+        _engine = create_engine(DATABASE_URL, echo=False, future=True)
+    return _engine
 
 
 def test_connection() -> None:

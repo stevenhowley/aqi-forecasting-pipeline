@@ -141,6 +141,14 @@ def run_forecast_and_notify() -> None:
         log_alert(f"⚠️ {msg}")
         return
 
+    # Warn if the most recent aggregate is more than 48 hours old
+    most_recent = df["date"].max()
+    age_hours = (datetime.utcnow().date() - most_recent.date()).days * 24
+    if age_hours > 48:
+        msg = f"⚠️ Most recent daily aggregate is {age_hours}h old ({most_recent.date()}). Forecasts may be stale."
+        print(msg)
+        log_alert(msg)
+
     print(f"Loaded {len(df)} latest daily aggregate row(s).")
     log_alert(f"Loaded {len(df)} latest daily aggregate row(s).")
 

@@ -13,8 +13,8 @@ def run_daily_aggregation() -> None:
       - mean_aqi
       - min_aqi
 
-    Only inserts rows that don't already exist, thanks to the UNIQUE constraint
-    on (location_id, date) and ON CONFLICT DO NOTHING.
+    Upserts so that existing rows are updated when new observations arrive
+    for a date that was already aggregated (e.g. mid-day re-runs).
     """
     print_settings_summary()
     print("\nBuilding daily aggregates...")
@@ -39,14 +39,14 @@ def run_daily_aggregation() -> None:
             AVG(o.aqi)::double precision AS mean_aqi,
             MIN(o.aqi) AS min_aqi
         FROM observations o
-        LEFT JOIN daily_aggregates da
-          ON da.location_id = o.location_id
-         AND da.date = o.timestamp_utc::date
-        WHERE da.id IS NULL
         GROUP BY
             o.location_id,
             o.timestamp_utc::date
-        ON CONFLICT (location_id, date) DO NOTHING;
+        ON CONFLICT (location_id, date) DO UPDATE
+        SET
+            max_aqi  = EXCLUDED.max_aqi,
+            mean_aqi = EXCLUDED.mean_aqi,
+            min_aqi  = EXCLUDED.min_aqi;
         """
     )
 

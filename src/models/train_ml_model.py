@@ -4,7 +4,6 @@ import pandas as pd
 from sqlalchemy import text
 from joblib import dump
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
 
 from src.db.connection import get_engine
@@ -94,9 +93,10 @@ def train_random_forest(df_feat: pd.DataFrame, model_path: Path) -> None:
         print("⚠️ Very few rows for training. Training on all data without train/test split.")
         X_train, X_test, y_train, y_test = X, X, y, y
     else:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
+        # Chronological split — never shuffle time series data, it causes leakage
+        split = int(n_rows * 0.8)
+        X_train, X_test = X.iloc[:split], X.iloc[split:]
+        y_train, y_test = y.iloc[:split], y.iloc[split:]
 
     # Baseline: persistence (target ≈ lag1)
     y_baseline = X_test["lag1"]

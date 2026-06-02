@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
@@ -34,6 +35,8 @@ def fetch_current_observations(
     distance_miles: int = 25,
     pollutants: Optional[List[str]] = None,
     timeout: int = 20,
+    max_retries: int = 3,
+    backoff_seconds: float = 5.0,
 ) -> List[Dict[str, Any]]:
     """
     Fetch current air quality observations from the AirNow API for a given lat/lon.
@@ -50,6 +53,10 @@ def fetch_current_observations(
         If provided, filter to only these pollutant names (e.g. ["PM2.5", "OZONE"]).
     timeout : int
         HTTP request timeout in seconds.
+    max_retries : int
+        Number of attempts before giving up.
+    backoff_seconds : float
+        Base wait time between retries; multiplied by attempt number.
 
     Returns
     -------
@@ -66,9 +73,21 @@ def fetch_current_observations(
         "API_KEY": AIRNOW_API_KEY,
     }
 
-    response = requests.get(BASE_URL, params=params, timeout=timeout)
-    response.raise_for_status()
-    data = response.json()
+    last_exc: Exception = RuntimeError("No attempts made")
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.get(BASE_URL, params=params, timeout=timeout)
+            response.raise_for_status()
+            data = response.json()
+            break
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_retries:
+                wait = backoff_seconds * attempt
+                print(f"  Attempt {attempt}/{max_retries} failed: {exc}. Retrying in {wait:.0f}s...")
+                time.sleep(wait)
+    else:
+        raise last_exc
 
     if not isinstance(data, list):
         # AirNow usually returns a list; if not, wrap it for consistency
