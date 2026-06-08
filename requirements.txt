@@ -3,6 +3,7 @@ numpy
 sqlalchemy
 psycopg2-binary
 python-dotenv
+requests
 
 fastapi
 uvicorn[standard]
