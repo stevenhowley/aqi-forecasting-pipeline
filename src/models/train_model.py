@@ -23,6 +23,7 @@ def load_training_data() -> pd.DataFrame:
         """
         SELECT location_id, date, max_aqi
         FROM daily_aggregates
+        WHERE is_interpolated = FALSE
         ORDER BY location_id, date;
         """
     )
