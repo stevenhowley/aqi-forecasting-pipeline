@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS daily_aggregates (
     max_aqi INTEGER,
     mean_aqi DOUBLE PRECISION,
     min_aqi INTEGER,
+    is_interpolated BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT uq_daily_location_date UNIQUE (location_id, date)
 );
 

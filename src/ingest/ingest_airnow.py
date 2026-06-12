@@ -25,14 +25,15 @@ def get_locations() -> List[Dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def insert_observations(records: List[Dict[str, Any]]) -> None:
+def insert_observations(records: List[Dict[str, Any]]) -> int:
     """
     Bulk insert observation records into the observations table.
 
     Uses ON CONFLICT DO NOTHING to avoid duplicates.
+    Returns the number of rows actually inserted.
     """
     if not records:
-        return
+        return 0
 
     # Prepare records so psycopg2 knows raw_json is JSON
     prepared: List[Dict[str, Any]] = []
@@ -67,7 +68,8 @@ def insert_observations(records: List[Dict[str, Any]]) -> None:
     )
 
     with engine.begin() as conn:
-        conn.execute(insert_sql, prepared)
+        result = conn.execute(insert_sql, prepared)
+        return result.rowcount
 
 def run_ingestion() -> None:
     """
@@ -119,15 +121,14 @@ def run_ingestion() -> None:
             continue
 
         try:
-            insert_observations(normalized)
+            inserted = insert_observations(normalized)
         except Exception as exc:
             print(f"❌ Error inserting observations for {name}:")
             print(exc)
             continue
 
-        count = len(normalized)
-        total_inserted += count
-        print(f"✅ Inserted {count} observation(s) for {name}.")
+        total_inserted += inserted
+        print(f"✅ Inserted {inserted} new observation(s) for {name} ({len(normalized)} fetched).")
 
     print(f"\nDone. Total observations inserted: {total_inserted}")
 

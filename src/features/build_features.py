@@ -39,14 +39,16 @@ def run_daily_aggregation() -> None:
             AVG(o.aqi)::double precision AS mean_aqi,
             MIN(o.aqi) AS min_aqi
         FROM observations o
+        WHERE o.timestamp_utc >= NOW() - INTERVAL '2 days'
         GROUP BY
             o.location_id,
             o.timestamp_utc::date
         ON CONFLICT (location_id, date) DO UPDATE
         SET
-            max_aqi  = EXCLUDED.max_aqi,
-            mean_aqi = EXCLUDED.mean_aqi,
-            min_aqi  = EXCLUDED.min_aqi;
+            max_aqi          = EXCLUDED.max_aqi,
+            mean_aqi         = EXCLUDED.mean_aqi,
+            min_aqi          = EXCLUDED.min_aqi,
+            is_interpolated  = FALSE;
         """
     )
 
@@ -57,7 +59,7 @@ def run_daily_aggregation() -> None:
         # rowcount may be -1 for some dialects, but often indicates inserted rows
         inserted = result.rowcount
 
-    print(f"✅ Daily aggregation complete. Rows inserted (if known): {inserted}")
+    print(f"✅ Daily aggregation complete. Rows upserted: {inserted}")
 
 
 if __name__ == "__main__":
