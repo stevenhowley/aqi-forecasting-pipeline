@@ -247,6 +247,26 @@ GitHub Actions runs pytest on every push to `main`.
 
 ---
 
+## Dashboard
+
+A Streamlit dashboard runs on the VM and is accessible at `http://34.105.84.238:8501`.
+
+Features:
+- **Forecast cards** — tomorrow's predicted AQI for each city, color-coded by severity
+- **Historical trend chart** — daily max AQI over time with interpolated days marked separately
+- **Forecast vs actual chart** — overlays predictions against real observations to evaluate model accuracy, with live MAE displayed
+- **Location and date range filters** — sidebar controls to zoom into a specific city or time window
+- **Raw data table** — expandable view of the underlying daily aggregates
+
+To start the dashboard on the VM:
+
+```bash
+source .venv/bin/activate
+streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+```
+
+---
+
 ## Current Status
 
 - [x] AirNow ingestion (hourly, 5 Oregon locations)
@@ -258,7 +278,7 @@ GitHub Actions runs pytest on every push to `main`.
 - [x] CI testing (GitHub Actions)
 - [x] GCP VM deployment with cron scheduling
 - [x] Historical gap interpolation with audit flag
-- [ ] Streamlit dashboard
+- [x] Streamlit dashboard (live at port 8501)
 - [ ] Multi-day forecasting
 - [ ] Weather data integration
 - [ ] Dockerization
