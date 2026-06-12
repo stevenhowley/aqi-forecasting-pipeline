@@ -9,7 +9,7 @@ from joblib import load
 from src.db.connection import get_engine
 from src.config.settings import print_settings_summary
 
-MODEL_NAME = "baseline_persistence_v1"
+MODEL_NAME = "random_forest_v1"
 ALERT_THRESHOLD = 100  # AQI level for alerts
 
 # Log file paths
@@ -35,7 +35,7 @@ def load_model():
     """
     Load the saved baseline model from the models/ directory.
     """
-    model_path = BASE_DIR / "models" / "aqi_baseline_model.joblib"
+    model_path = BASE_DIR / "models" / "aqi_rf_model.joblib"
 
     if not model_path.exists():
         raise FileNotFoundError(f"Model file not found at: {model_path}")
