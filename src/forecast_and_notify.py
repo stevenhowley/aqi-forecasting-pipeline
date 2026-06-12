@@ -11,6 +11,7 @@ from src.config.settings import print_settings_summary
 
 MODEL_NAME = "random_forest_v1"
 ALERT_THRESHOLD = 100  # AQI level for alerts
+FEATURE_COLS = ["lag1", "lag2", "lag3", "roll3", "roll7"]
 
 # Log file paths
 BASE_DIR = Path(__file__).resolve().parents[1]  # project root
@@ -44,36 +45,46 @@ def load_model():
     return model, model_path
 
 
-def load_latest_daily_aggregates() -> pd.DataFrame:
+def load_recent_daily_aggregates(days: int = 10) -> pd.DataFrame:
     """
-    Load the most recent daily aggregate per location.
+    Load the most recent N real (non-interpolated) rows per location.
 
-    Returns DataFrame with:
-        - location_id
-        - date
-        - max_aqi
+    Fetches enough history to compute lag and rolling features for prediction.
     """
     engine = get_engine()
 
     sql = text(
         """
-        SELECT da.location_id, da.date, da.max_aqi
-        FROM daily_aggregates da
-        JOIN (
-            SELECT location_id, MAX(date) AS max_date
-            FROM daily_aggregates
-            GROUP BY location_id
-        ) latest
-          ON da.location_id = latest.location_id
-         AND da.date = latest.max_date
-        ORDER BY da.location_id;
+        SELECT location_id, date, max_aqi
+        FROM daily_aggregates
+        WHERE is_interpolated = FALSE
+        ORDER BY location_id, date;
         """
     )
 
     with engine.connect() as conn:
         df = pd.read_sql(sql, conn, parse_dates=["date"])
 
-    return df
+    return df.groupby("location_id").tail(days).reset_index(drop=True)
+
+
+def build_forecast_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build lag and rolling features, then return the most recent row per location.
+
+    The most recent row has features computed from the preceding days and is
+    the input used to predict tomorrow's AQI.
+    """
+    df = df.sort_values(["location_id", "date"]).copy()
+    grp = df.groupby("location_id", group_keys=False)
+
+    df["lag1"] = grp["max_aqi"].shift(1)
+    df["lag2"] = grp["max_aqi"].shift(2)
+    df["lag3"] = grp["max_aqi"].shift(3)
+    df["roll3"] = grp["max_aqi"].rolling(3).mean().reset_index(level=0, drop=True)
+    df["roll7"] = grp["max_aqi"].rolling(7).mean().reset_index(level=0, drop=True)
+
+    return df.groupby("location_id").last().reset_index()
 
 
 def insert_forecasts(records: List[Dict[str, Any]]) -> None:
@@ -133,27 +144,28 @@ def run_forecast_and_notify() -> None:
     print(msg)
     log_alert(msg)
 
-    df = load_latest_daily_aggregates()
+    df_recent = load_recent_daily_aggregates()
 
-    if df.empty:
+    if df_recent.empty:
         msg = "No daily aggregates found. Run ingestion + aggregation first."
         print(f"⚠️ {msg}")
         log_alert(f"⚠️ {msg}")
         return
 
     # Warn if the most recent aggregate is more than 48 hours old
-    most_recent = df["date"].max()
+    most_recent = df_recent["date"].max()
     age_hours = (datetime.utcnow().date() - most_recent.date()).days * 24
     if age_hours > 48:
         msg = f"⚠️ Most recent daily aggregate is {age_hours}h old ({most_recent.date()}). Forecasts may be stale."
         print(msg)
         log_alert(msg)
 
+    df = build_forecast_features(df_recent)
     print(f"Loaded {len(df)} latest daily aggregate row(s).")
     log_alert(f"Loaded {len(df)} latest daily aggregate row(s).")
 
     # Predict next-day AQI
-    df["forecast_aqi"] = model.predict(df).round().astype(int)
+    df["forecast_aqi"] = model.predict(df[FEATURE_COLS]).round().astype(int)
     df["target_date"] = df["date"] + pd.to_timedelta(1, unit="D")
 
     # Build records for insertion
