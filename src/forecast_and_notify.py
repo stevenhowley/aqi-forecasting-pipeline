@@ -8,6 +8,7 @@ from joblib import load
 
 from src.db.connection import get_engine
 from src.config.settings import print_settings_summary
+from src.alerts import send_alert_email, send_all_clear_email
 
 MODEL_NAME = "random_forest_v1"
 ALERT_THRESHOLD = 100  # AQI level for alerts
@@ -87,6 +88,76 @@ def build_forecast_features(df: pd.DataFrame) -> pd.DataFrame:
     return df.groupby("location_id").last().reset_index()
 
 
+def ensure_alert_state_table() -> None:
+    with get_engine().begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS alert_state (
+                location_id INTEGER PRIMARY KEY REFERENCES locations(id),
+                in_alert BOOLEAN NOT NULL DEFAULT FALSE,
+                alert_started_at TIMESTAMPTZ,
+                last_forecast_aqi INTEGER
+            )
+        """))
+
+
+def load_location_names() -> pd.DataFrame:
+    with get_engine().connect() as conn:
+        return pd.read_sql(text("SELECT id AS location_id, name FROM locations"), conn)
+
+
+def process_alert_state(df: pd.DataFrame) -> None:
+    engine = get_engine()
+
+    with engine.connect() as conn:
+        state_rows = conn.execute(text(
+            "SELECT location_id, in_alert FROM alert_state"
+        )).mappings().all()
+
+    state_map = {row["location_id"]: row["in_alert"] for row in state_rows}
+    now = datetime.utcnow()
+
+    for row in df.itertuples():
+        loc_id = int(row.location_id)
+        loc_name = row.name
+        forecast_aqi = int(row.forecast_aqi)
+        target_date = row.target_date.date()
+        currently_alerting = state_map.get(loc_id, False)
+        over_threshold = forecast_aqi >= ALERT_THRESHOLD
+
+        if over_threshold and not currently_alerting:
+            send_alert_email(loc_name, forecast_aqi, target_date, ALERT_THRESHOLD)
+            log_alert(f"Alert email sent for {loc_name}: AQI {forecast_aqi}")
+            new_in_alert = True
+            new_started_at = now
+        elif not over_threshold and currently_alerting:
+            send_all_clear_email(loc_name, forecast_aqi, target_date, ALERT_THRESHOLD)
+            log_alert(f"All-clear email sent for {loc_name}: AQI {forecast_aqi}")
+            new_in_alert = False
+            new_started_at = None
+        else:
+            new_in_alert = currently_alerting
+            new_started_at = now if currently_alerting else None
+
+        with engine.begin() as conn:
+            conn.execute(text("""
+                INSERT INTO alert_state (location_id, in_alert, alert_started_at, last_forecast_aqi)
+                VALUES (:loc_id, :in_alert, :started_at, :last_aqi)
+                ON CONFLICT (location_id) DO UPDATE
+                SET in_alert = EXCLUDED.in_alert,
+                    alert_started_at = CASE
+                        WHEN EXCLUDED.in_alert AND alert_state.alert_started_at IS NOT NULL
+                            THEN alert_state.alert_started_at
+                        ELSE EXCLUDED.alert_started_at
+                    END,
+                    last_forecast_aqi = EXCLUDED.last_forecast_aqi
+            """), {
+                "loc_id": loc_id,
+                "in_alert": new_in_alert,
+                "started_at": new_started_at,
+                "last_aqi": forecast_aqi,
+            })
+
+
 def insert_forecasts(records: List[Dict[str, Any]]) -> None:
     """
     Insert forecast records into the forecasts table.
@@ -138,6 +209,7 @@ def run_forecast_and_notify() -> None:
     print_settings_summary()
     print("\nRunning forecast and notify...")
     log_alert("Starting forecast_and_notify run")
+    ensure_alert_state_table()
 
     model, model_path = load_model()
     msg = f"Using model from: {model_path}"
@@ -161,6 +233,7 @@ def run_forecast_and_notify() -> None:
         log_alert(msg)
 
     df = build_forecast_features(df_recent)
+    df = df.merge(load_location_names(), on="location_id")
     print(f"Loaded {len(df)} latest daily aggregate row(s).")
     log_alert(f"Loaded {len(df)} latest daily aggregate row(s).")
 
@@ -182,9 +255,8 @@ def run_forecast_and_notify() -> None:
 
     insert_forecasts(records)
 
-    # Simple alerting: log and print any forecasts above threshold
+    # Log summary
     high_forecasts = df[df["forecast_aqi"] >= ALERT_THRESHOLD]
-
     if high_forecasts.empty:
         msg = (
             f"No locations exceed AQI threshold {ALERT_THRESHOLD}. "
@@ -193,18 +265,12 @@ def run_forecast_and_notify() -> None:
         print(msg)
         log_alert(msg)
     else:
-        header = f"⚠️ ALERT: Locations with forecast AQI >= {ALERT_THRESHOLD}:"
-        print("\n" + header)
-        log_alert(header)
-
         for row in high_forecasts.itertuples():
-            line = (
-                f"location_id={row.location_id}, "
-                f"target_date={row.target_date.date()}, "
-                f"forecast_aqi={row.forecast_aqi}"
-            )
-            print(" - " + line)
-            log_alert("ALERT: " + line)
+            msg = f"⚠️ {row.name}: forecast AQI {row.forecast_aqi} on {row.target_date.date()}"
+            print(msg)
+            log_alert(msg)
+
+    process_alert_state(df)
 
 
 if __name__ == "__main__":

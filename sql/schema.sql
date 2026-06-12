@@ -32,6 +32,14 @@ CREATE TABLE IF NOT EXISTS daily_aggregates (
     CONSTRAINT uq_daily_location_date UNIQUE (location_id, date)
 );
 
+-- Alert state: tracks which locations are currently in an active alert
+CREATE TABLE IF NOT EXISTS alert_state (
+    location_id INTEGER PRIMARY KEY REFERENCES locations(id),
+    in_alert BOOLEAN NOT NULL DEFAULT FALSE,
+    alert_started_at TIMESTAMPTZ,
+    last_forecast_aqi INTEGER
+);
+
 -- Forecasts (next-day or multi-day)
 CREATE TABLE IF NOT EXISTS forecasts (
     id SERIAL PRIMARY KEY,
